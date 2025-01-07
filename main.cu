@@ -12,16 +12,21 @@ private:
 	T *device_ptr_;
 	int n_row_;
 	int n_col_;
+	size_t byte_size_;
+
 public:
 	Matrix(int rows, int cols): 
 		n_row_(rows), 
 		n_col_(cols)
 	{
-		host_ptr_ = (T*)malloc(n_row_ * n_col_ * sizeof(T));
+		byte_size_ = n_row_ * n_col_ * sizeof(T);
+		host_ptr_ = (T*)malloc(byte_size_);
+		cudaMalloc((T **)&device_ptr_, byte_size_);
 	}
 
 	T* host_ptr() {return host_ptr_;}
 	T* device_ptr() {return device_ptr_;}
+	size_t byte_size() {return byte_size_;}
 	
 	void init(T min, T max) {
 		std::random_device rd;
@@ -51,21 +56,19 @@ public:
 	}
 
 	void copyData(cudaMemcpyKind kind) {
-		size_t byte_size = sizeof(T) * n_row_ * n_col_;
 		if (kind == cudaMemcpyHostToDevice) {
-			cudaError_t err = cudaMemcpy(device_ptr_, host_ptr_, byte_size, kind);
+			cudaError_t err = cudaMemcpy(device_ptr_, host_ptr_, byte_size_, kind);
 			if (err != cudaSuccess) {
 				fprintf(stderr, "Failed to copy from host to device (error code: %s)", cudaGetErrorString(err));
 				exit(EXIT_FAILURE);
 			}
 		}
 		else if (kind == cudaMemcpyDeviceToHost) {
-			cudaError_t err = cudaMemcpy(device_ptr_, host_ptr_, byte_size, kind);
+			cudaError_t err = cudaMemcpy(device_ptr_, host_ptr_, byte_size_, kind);
 				fprintf(stderr, "Failed to copy from device to host (error code: %s)", cudaGetErrorString(err));
 				exit(EXIT_FAILURE);
 		}
 	}
-
 }; // class matrix
 
 int main() {
